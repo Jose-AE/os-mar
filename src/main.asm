@@ -1,7 +1,14 @@
-org 0x7C00 ; Boot sector starts at 0x7C00
+org 0x7C00 ; Tell assembler sector starts at 0x7C00
 bits 16 ; Informs the assembler to generate 16-bit real-mode instructions
 
 main:
+    mov ah, 0x0e ;Set teletype mode
+    mov al, "h" ; Load character 'h' into AL
+    int 0x10 ; Call BIOS video interrupt 0x10 and set it to mode  inside AH (0x0e-teletype mode) and display character in AL
+
+
+
+
     hlt ; Halt the CPU
 
 
