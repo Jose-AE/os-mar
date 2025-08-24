@@ -1,29 +1,34 @@
-# Assembler to use
-ASM=nasm
+CROSS   = aarch64-linux-gnu
+AS      = $(CROSS)-as
+CC      = $(CROSS)-gcc
+LD      = $(CROSS)-ld
 
-# Source and build directories
-SRC_DIR=src
-BUILD_DIR=build
-IMG_NAME=main_floppy.img
+SRC     = src
+BUILD   = build
 
-# Rule to create a 1.44MB floppy disk image from the binary
-$(BUILD_DIR)/$(IMG_NAME): $(BUILD_DIR)/main.bin
-	cp $(BUILD_DIR)/main.bin $(BUILD_DIR)/$(IMG_NAME)   # Copy binary to image file
-	truncate -s 1440k $(BUILD_DIR)/$(IMG_NAME)          # Set image size to 1.44MB (floppy size)
+CFLAGS  = -ffreestanding -c
+LDFLAGS = -nostdlib -T $(SRC)/linker.ld
 
-# Rule to assemble main.asm into a flat binary
-$(BUILD_DIR)/main.bin: $(SRC_DIR)/main.asm
-	$(ASM) $(SRC_DIR)/main.asm -f bin -o $(BUILD_DIR)/main.bin  # Assemble source to binary
+all: $(BUILD)/kernel.elf
+
+$(BUILD):
+	mkdir -p $(BUILD)
+
+$(BUILD)/boot.o: $(SRC)/boot.s | $(BUILD)
+	$(AS) $(SRC)/boot.s -o $(BUILD)/boot.o
+
+$(BUILD)/kernel.o: $(SRC)/kernel.c | $(BUILD)
+	$(CC) $(CFLAGS) $(SRC)/kernel.c -o $(BUILD)/kernel.o
+
+$(BUILD)/kernel.elf: $(BUILD)/boot.o $(BUILD)/kernel.o $(SRC)/linker.ld | $(BUILD)
+	$(LD) $(LDFLAGS) $(BUILD)/boot.o $(BUILD)/kernel.o -o $(BUILD)/kernel.elf
+
+clean:
+	rm -rf $(BUILD)
 
 
 
+.PHONY: all clean
 
-# Tell make that these are not real files, but commands
-.PHONY: build run # List of commands
-
-
-# Run the program
-run: 
-	@echo "Running..."
-	qemu-system-i386 -fda $(BUILD_DIR)/$(IMG_NAME)
-
+run:
+	qemu-system-aarch64 -machine virt -cpu cortex-a57 -kernel $(BUILD)/kernel.elf -nographic
